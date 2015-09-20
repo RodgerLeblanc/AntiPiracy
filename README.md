@@ -35,6 +35,8 @@ private:
 4) In "applicationui.cpp", add this to your constructor :
 
 ```sh
+    //...
+
     // Set created root object as the application scene
     // Application::instance()->setScene(root);    <---- *** This need to be commented or removed ***
 
