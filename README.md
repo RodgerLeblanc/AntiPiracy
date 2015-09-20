@@ -6,6 +6,8 @@ If the app was sideloaded, a SystemPrompt will show asking to enter an unlock ke
 
 Note that if an unlock key was already provided before, the code will fake like it was installed from BlackBerry World and the app will launch without asking anything.
 
+Giving out the unlock key is not a good idea anyway, as the unlock key can be shared to other users who would be able to unlock the app. Only use unlock key for yourself or with persons you really trust. A better method would be to whitelist the user using the online method, just use something unique to that user, like his wifi mac address or something else (you'll need to update the code as it's set to whitelist an app version right now).
+
 You can also set a bypass method using an online document. An example is provided in this sample app, it can be used to whitelist a special version of the app while it's in review process.
 
 This code was barely tested, I can't assure that it will work in all environments and all conditions. I can't be held responsible if this code doesn't work for your app, use at your own risk.
