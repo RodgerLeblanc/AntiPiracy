@@ -13,6 +13,7 @@
 #include <bb/cascades/DockLayout>
 #include <bb/cascades/Label>
 #include <bb/cascades/Page>
+#include <bb/device/HardwareInfo>
 #include <bb/PackageInfo>
 #include <bb/PpsObject>
 #include <bb/system/SystemUiResult>
@@ -21,17 +22,28 @@
 #include <QDir>
 #include <QFileInfoList>
 #include <QSettings>
+#include <QStringList>
 #include <QTimer>
 
 #include <QtNetwork>
 
 using namespace bb::cascades;
+using namespace bb::device;
 using namespace bb::system;
+
+/*
+ * Don't forget to add this to your pro file :
+ *
+ * LIBS += -lbb -lbbdevice -lbbsystem
+ * QT += network
+ *
+ */
 
 AntiPiracy::AntiPiracy(const QString& unlockKeyHash, const QString& salt, QObject *_parent) :
     QObject(),
     m_keyPrompt(NULL),
     m_wrongKeyToast(NULL),
+    m_appInstalledFromBetaZone(false),
     m_appInstalledFromBBW(false),
     m_urlToBypassHash(""),
     m_sourceOfDownload(""),
@@ -69,8 +81,8 @@ void AntiPiracy::checkValidityAndSetScene(AbstractPane* root, QString urlToBypas
         }
     }
 
-    if (m_appInstalledFromBBW) {
-        // App was either installed from BBW or unlock key was previously entered correctly.
+    if ((m_appInstalledFromBBW) || (m_appInstalledFromBetaZone)) {
+        // App was either installed from BBW/BetaZone or unlock key was previously entered correctly.
         // Set the normal main.qml as Scene
         Application::instance()->setScene(root);
 
@@ -171,6 +183,7 @@ bool AntiPiracy::checkFile(const QString& path) {
                             qDebug() << keyValue;
                             m_sourceOfDownload = keyValue.last();
                             m_appInstalledFromBBW = (keyValue.last() == "AppWorld");
+                            m_appInstalledFromBetaZone = (keyValue.last() == "BetaZone");
                             break;
                         }
                     }
@@ -224,6 +237,8 @@ void AntiPiracy::onKeyPromptFinished(SystemUiResult::Type type) {
     if ((type == SystemUiResult::ConfirmButtonSelection) && (inputAsHash == m_unlockKeyHash)) {
         // The user entered the correct key, set the normal root as scene
         if (m_normalRoot) { Application::instance()->setScene(m_normalRoot); }
+        else { Application::instance()->quit(); }
+
         m_wrongKeyToast->setBody(tr("App has been unlocked permanently. Thanks!"));
         m_wrongKeyToast->show();
     }
@@ -234,6 +249,7 @@ void AntiPiracy::onKeyPromptFinished(SystemUiResult::Type type) {
             emit errorString("Couldn't connect to SystemToast finished signal");
             Application::instance()->quit();
         }
+
         m_wrongKeyToast->setBody(tr("Wrong unlock key. Contact developer if you want to unlock this app."));
         m_wrongKeyToast->show();
     }
@@ -248,15 +264,19 @@ void AntiPiracy::onReplyFinished() {
      */
     QNetworkReply *reply = qobject_cast<QNetworkReply *>(sender());
 
-    QString onlineWhitelistedHash = "";
+    /*
+     * The online document should contain a list of whitelisted hash, separated by \n.
+     */
+    QStringList onlineWhitelistedHash;
     if (reply->error() == QNetworkReply::NoError)
-        onlineWhitelistedHash = QString(reply->readAll()).trimmed().remove("\n");
+        onlineWhitelistedHash = QString(reply->readAll()).split("\n");
 
-    QString thisHash = this->hashThis(QCoreApplication::applicationVersion());
+    QString applicationVersionHash = this->hashThis(QCoreApplication::applicationVersion());
+    bool applicationVersionIsWhitelisted = onlineWhitelistedHash.contains(applicationVersionHash);
 
     sender()->deleteLater();
 
-    if (onlineWhitelistedHash == thisHash) {
+    if (applicationVersionIsWhitelisted) {
         /*
          * The online hash matches, set the main.qml as scene
          *
@@ -264,6 +284,8 @@ void AntiPiracy::onReplyFinished() {
          * an app submission process, to make sure a BBW reviewer don't see the prompt)
          */
         if (m_normalRoot) { Application::instance()->setScene(m_normalRoot); }
+        else { Application::instance()->quit(); }
+
         this->deleteLater();
     }
     else {

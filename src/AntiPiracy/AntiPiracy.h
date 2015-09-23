@@ -88,6 +88,7 @@ private:
     /*
      * Variables
      */
+    bool m_appInstalledFromBetaZone;
     bool m_appInstalledFromBBW;
     QString m_urlToBypassHash;
     QString m_salt;
